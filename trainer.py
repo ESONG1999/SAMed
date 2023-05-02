@@ -16,7 +16,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 from utils import DiceLoss, Focal_loss
 from torchvision import transforms
-from icecream import ic
+# from icecream import ic
 
 
 def calc_loss(outputs, low_res_label_batch, ce_loss, dice_loss, dice_weight:float=0.8):

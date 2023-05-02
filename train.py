@@ -12,7 +12,7 @@ from sam_lora_image_encoder import LoRA_Sam
 from segment_anything import sam_model_registry
 
 from trainer import trainer_synapse
-from icecream import ic
+# from icecream import ic
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--root_path', type=str,
@@ -23,7 +23,7 @@ parser.add_argument('--dataset', type=str,
 parser.add_argument('--list_dir', type=str,
                     default='./lists/lists_Synapse', help='list dir')
 parser.add_argument('--num_classes', type=int,
-                    default=8, help='output channel of network')
+                    default=1, help='output channel of network')
 parser.add_argument('--max_iterations', type=int,
                     default=30000, help='maximum epoch number to train')
 parser.add_argument('--max_epochs', type=int,
@@ -31,7 +31,7 @@ parser.add_argument('--max_epochs', type=int,
 parser.add_argument('--stop_epoch', type=int,
                     default=160, help='maximum epoch number to train')
 parser.add_argument('--batch_size', type=int,
-                    default=12, help='batch_size per gpu')
+                    default=6, help='batch_size per gpu')
 parser.add_argument('--n_gpu', type=int, default=2, help='total gpu')
 parser.add_argument('--deterministic', type=int, default=1,
                     help='whether use deterministic training')
@@ -40,7 +40,7 @@ parser.add_argument('--base_lr', type=float, default=0.005,
 parser.add_argument('--img_size', type=int,
                     default=512, help='input patch size of network input')
 parser.add_argument('--seed', type=int,
-                    default=1234, help='random seed')
+                    default=3407, help='random seed')
 parser.add_argument('--vit_name', type=str,
                     default='vit_b', help='select one vit model')
 parser.add_argument('--ckpt', type=str, default='checkpoints/sam_vit_b_01ec64.pth',
@@ -52,7 +52,7 @@ parser.add_argument('--warmup_period', type=int, default=250,
                     help='Warp up iterations, only valid whrn warmup is activated')
 parser.add_argument('--AdamW', action='store_true', help='If activated, use AdamW to finetune SAM model')
 parser.add_argument('--module', type=str, default='sam_lora_image_encoder')
-parser.add_argument('--dice_param', type=float, default=0.8)
+parser.add_argument('--dice_param', type=float, default=0.7)
 args = parser.parse_args()
 
 if __name__ == "__main__":

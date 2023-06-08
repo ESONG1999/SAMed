@@ -31,8 +31,8 @@ parser.add_argument('--max_epochs', type=int,
 parser.add_argument('--stop_epoch', type=int,
                     default=160, help='maximum epoch number to train')
 parser.add_argument('--batch_size', type=int,
-                    default=6, help='batch_size per gpu')
-parser.add_argument('--n_gpu', type=int, default=2, help='total gpu')
+                    default=4, help='batch_size per gpu')
+parser.add_argument('--n_gpu', type=int, default=1, help='total gpu')
 parser.add_argument('--deterministic', type=int, default=1,
                     help='whether use deterministic training')
 parser.add_argument('--base_lr', type=float, default=0.005,
@@ -52,7 +52,7 @@ parser.add_argument('--warmup_period', type=int, default=250,
                     help='Warp up iterations, only valid whrn warmup is activated')
 parser.add_argument('--AdamW', action='store_true', help='If activated, use AdamW to finetune SAM model')
 parser.add_argument('--module', type=str, default='sam_lora_image_encoder')
-parser.add_argument('--dice_param', type=float, default=0.7)
+parser.add_argument('--dice_param', type=float, default=0.8)
 args = parser.parse_args()
 
 if __name__ == "__main__":
@@ -96,6 +96,8 @@ if __name__ == "__main__":
                                                                 checkpoint=args.ckpt, pixel_mean=[0, 0, 0],
                                                                 pixel_std=[1, 1, 1])
 
+    # if args.n_gpu == 1:
+    #     torch.cuda.set_device(1)
     pkg = import_module(args.module)
     net = pkg.LoRA_Sam(sam, args.rank).cuda()
 

@@ -21,27 +21,39 @@ class_to_name = {1: 'spleen', 2: 'right kidney', 3: 'left kidney', 4: 'gallbladd
 
 
 def inference(args, multimask_output, db_config, model, test_save_path=None):
-    db_test = db_config['Dataset'](base_dir=args.volume_path, list_dir=args.list_dir, split='test_vol')
+    db_test = db_config['Dataset'](base_dir=args.volume_path, list_dir=args.list_dir, split='test')
     testloader = DataLoader(db_test, batch_size=1, shuffle=False, num_workers=1)
     logging.info(f'{len(testloader)} test iterations per epoch')
     model.eval()
     metric_list = 0.0
+    a = 0
+    n = 0
+    number = 0
+    d = 0
     for i_batch, sampled_batch in tqdm(enumerate(testloader)):
-        h, w = sampled_batch['image'].shape[2:]
-        image, label, case_name = sampled_batch['image'], sampled_batch['label'], sampled_batch['case_name'][0]
+        # h, w = sampled_batch['image'].shape[2:]
+        image, label, case_name= sampled_batch['image'], sampled_batch['label'], sampled_batch['case_name'][0]
         # metric_i = test_single_volume(image, label, model, classes=args.num_classes, multimask_output=multimask_output,
         #                               patch_size=[args.img_size, args.img_size], input_size=[args.input_size, args.input_size],
         #                               test_save_path=test_save_path, case=case_name, z_spacing=db_config['z_spacing'])
-        metric_i = test_single_slice(image, label, model, classes=args.num_classes, multimask_output=multimask_output,
+        # metric_i, accurate, n_accurate, dice = test_single_slice(image, label, t2, model, classes=args.num_classes, multimask_output=multimask_output,
+        #                               patch_size=[args.img_size, args.img_size], input_size=[args.input_size, args.input_size],
+        #                               test_save_path=test_save_path, case=case_name, z_spacing=db_config['z_spacing'])
+        metric_i, accurate, n_accurate, dice = test_single_slice(image, label, model, classes=args.num_classes, multimask_output=multimask_output,
                                       patch_size=[args.img_size, args.img_size], input_size=[args.input_size, args.input_size],
                                       test_save_path=test_save_path, case=case_name, z_spacing=db_config['z_spacing'])
         metric_list += np.array(metric_i)
+        a += accurate * 1.0
+        n += n_accurate * 1.0
+        if accurate + n_accurate == 1:
+            number += 1
+            d += dice
         logging.info('idx %d case %s mean_dice %f mean_hd95 %f' % (
             i_batch, case_name, np.mean(metric_i, axis=0)[0], np.mean(metric_i, axis=0)[1]))
     metric_list = metric_list / len(db_test)
     for i in range(1, args.num_classes + 1):
         try:
-            logging.info('Mean class %d name %s mean_dice %f mean_hd95 %f' % (i, class_to_name[i], metric_list[i - 1][0], metric_list[i - 1][1]))
+            logging.info('Mean class %d name %s mean_dice %f mean_hd95 %f accuracy %f dice_on_lesion %f number %f' % (i, class_to_name[i], metric_list[i - 1][0], metric_list[i - 1][1], a/(a+n), d / number, number))
         except:
             logging.info('Mean class %d mean_dice %f mean_hd95 %f' % (i, metric_list[i - 1][0], metric_list[i - 1][1]))
     performance = np.mean(metric_list, axis=0)[0]
@@ -77,13 +89,13 @@ if __name__ == '__main__':
     parser.add_argument('--deterministic', type=int, default=1, help='whether use deterministic training')
     parser.add_argument('--ckpt', type=str, default='checkpoints/sam_vit_b_01ec64.pth',
                         help='Pretrained checkpoint')
-    parser.add_argument('--lora_ckpt', type=str, default='checkpoints/epoch_159_r4.pth', help='The checkpoint from LoRA')
+    parser.add_argument('--lora_ckpt', type=str, default='checkpoints/epoch_159_j6.pth', help='The checkpoint from LoRA')
     parser.add_argument('--vit_name', type=str, default='vit_b', help='Select one vit model')
     parser.add_argument('--rank', type=int, default=4, help='Rank for LoRA adaptation')
     parser.add_argument('--module', type=str, default='sam_lora_image_encoder')
 
     args = parser.parse_args()
-
+    # torch.cuda.set_device(1)
     if args.config is not None:
         # overwtite default configurations with config file\
         config_dict = config_to_dict(args.config)

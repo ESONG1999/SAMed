@@ -107,6 +107,8 @@ def calculate_metric_percase(pred, gt):
         hd95 = metric.binary.hd95(pred, gt)
         return dice, hd95
     elif pred.sum() > 0 and gt.sum() == 0:
+        return 0, 0
+    elif pred.sum() == 0 and gt.sum() == 0:
         return 1, 0
     else:
         return 0, 0
@@ -183,19 +185,26 @@ def test_single_volume(image, label, net, classes, multimask_output, patch_size=
 
 def test_single_slice(image, label, net, classes, multimask_output, patch_size=[256, 256], input_size=[256, 256],
                        test_save_path=None, case=None, z_spacing=1):
+    # image, label, t2 = image.squeeze(0).cpu().detach().numpy(), label.squeeze(0).cpu().detach().numpy(), t2.squeeze(0).cpu().detach().numpy()
     image, label = image.squeeze(0).cpu().detach().numpy(), label.squeeze(0).cpu().detach().numpy()
-    if len(image.shape) == 3:
+    if len(image.shape) == 2:
         prediction = np.zeros_like(label)
         slice = image
         x, y = slice.shape[0], slice.shape[1]
         if x != input_size[0] or y != input_size[1]:
-            slice = zoom(slice, (input_size[0] / x, input_size[1] / y, 1), order=3)  # previous using 0
+            slice = zoom(slice, (input_size[0] / x, input_size[1] / y), order=3)  # previous using 0
+            # t2 = zoom(t2, (input_size[0] / x, input_size[1] / y), order=3)  # previous using 0
         new_x, new_y = slice.shape[0], slice.shape[1]  # [input_size[0], input_size[1]]
         if new_x != patch_size[0] or new_y != patch_size[1]:
-            slice = zoom(slice, (patch_size[0] / new_x, patch_size[1] / new_y, 1), order=3)  # previous using 0, patch_size[0], patch_size[1]
+            slice = zoom(slice, (patch_size[0] / new_x, patch_size[1] / new_y), order=3)  # previous using 0, patch_size[0], patch_size[1]
+            # t2 = zoom(t2, (patch_size[0] / new_x, patch_size[1] / new_y), order=3)  # previous using 0, patch_size[0], patch_size[1]
         slice = slice / 255.0
-        inputs = torch.from_numpy(slice).unsqueeze(0).float().cuda()
-        inputs = inputs.permute([0, 3, 1, 2])
+        # t2 = t2 / 255.0
+        # t2 = torch.from_numpy(t2).unsqueeze(0).unsqueeze(0).float().cuda()
+        inputs = torch.from_numpy(slice).unsqueeze(0).unsqueeze(0).float().cuda()
+        inputs = repeat(inputs, 'b c h w -> b (repeat c) h w', repeat=3)
+        # t2 = repeat(t2, 'b c h w -> b (repeat c) h w', repeat=2)
+        # inputs = torch.cat((inputs, t2), dim=1)
         net.eval()
         with torch.no_grad():
             outputs = net(inputs, multimask_output, patch_size[0])
@@ -219,7 +228,18 @@ def test_single_slice(image, label, net, classes, multimask_output, patch_size=[
         #     imageio.imwrite(f'/output/images/label/label_{i}.png', label[i])
         # temp = input('kkpsa')
     metric_list = []
+    dice = 0
+    accurate = 0
+    not_accurate = 0
     for i in range(1, classes + 1):
+        p = (prediction == i)
+        g = (label == i)
+        if g.sum() > 0:
+            dice = calculate_metric_percase(p,g)[0]
+            if p.sum() > 0:
+                accurate = 1
+            else:
+                not_accurate = 1
         metric_list.append(calculate_metric_percase(prediction == i, label == i))
 
     if test_save_path is not None:
@@ -236,4 +256,4 @@ def test_single_slice(image, label, net, classes, multimask_output, patch_size=[
         sitk.WriteImage(prd_itk, test_save_path + '/' + case + "_pred.nii.gz")
         sitk.WriteImage(img_itk, test_save_path + '/' + case + "_img.nii.gz")
         sitk.WriteImage(lab_itk, test_save_path + '/' + case + "_gt.nii.gz")
-    return metric_list
+    return metric_list, accurate, not_accurate, dice
